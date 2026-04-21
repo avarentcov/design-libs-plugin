@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b0d17"/>
+      <stop offset="1" stop-color="#1a1d33"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d99ff"/>
+      <stop offset="1" stop-color="#7b61ff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.7" cy="0.3" r="0.5">
+      <stop offset="0" stop-color="#0d99ff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#0d99ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect width="1920" height="1080" fill="url(#glow)"/>
+
+  <!-- Левая колонка: заголовок -->
+  <g transform="translate(120, 260)" fill="#fff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif">
+    <rect x="0" y="0" width="120" height="120" rx="26" fill="url(#brand)"/>
+    <g fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round">
+      <circle cx="48" cy="48" r="22" transform="translate(8,8)"/>
+      <line x1="65" y1="65" x2="88" y2="88" transform="translate(8,8)"/>
+    </g>
+    <text x="0" y="220" font-size="96" font-weight="800" letter-spacing="-2">Design Libs</text>
+    <text x="0" y="310" font-size="96" font-weight="800" letter-spacing="-2" fill="#8b9cff">Inspector</text>
+    <text x="0" y="400" font-size="34" font-weight="500" fill="#b8bdd4">Аудит макета по 227 правилам — за секунды.</text>
+    <text x="0" y="448" font-size="34" font-weight="500" fill="#b8bdd4">Детерминированные детекторы + Claude Vision.</text>
+
+    <!-- Бейджики метрик -->
+    <g transform="translate(0, 520)">
+      <g transform="translate(0,0)">
+        <rect width="180" height="56" rx="28" fill="#1e2340" stroke="#2b3152"/>
+        <text x="24" y="36" font-size="22" font-weight="600" fill="#fff">22 детектора</text>
+      </g>
+      <g transform="translate(200,0)">
+        <rect width="200" height="56" rx="28" fill="#1e2340" stroke="#2b3152"/>
+        <text x="24" y="36" font-size="22" font-weight="600" fill="#fff">227 правил</text>
+      </g>
+      <g transform="translate(420,0)">
+        <rect width="150" height="56" rx="28" fill="#1e2340" stroke="#2b3152"/>
+        <text x="24" y="36" font-size="22" font-weight="600" fill="#fff">WCAG 2.2</text>
+      </g>
+      <g transform="translate(590,0)">
+        <rect width="130" height="56" rx="28" fill="#1e2340" stroke="#2b3152"/>
+        <text x="24" y="36" font-size="22" font-weight="600" fill="#fff">RU</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Правая колонка: мок-ап окна плагина -->
+  <g transform="translate(1150, 200)">
+    <rect width="620" height="720" rx="18" fill="#0f1228" stroke="#242a4a"/>
+    <rect width="620" height="44" rx="18" fill="#181c36"/>
+    <g fill="#3b4172" transform="translate(16,16)">
+      <circle cx="6" cy="6" r="6"/>
+      <circle cx="26" cy="6" r="6"/>
+      <circle cx="46" cy="6" r="6"/>
+    </g>
+    <text x="200" y="30" font-size="16" font-weight="600" fill="#b8bdd4" font-family="-apple-system, Inter, sans-serif">Design Libs Inspector</text>
+
+    <!-- Таб-бар -->
+    <g transform="translate(0,44)">
+      <rect width="620" height="48" fill="#131732"/>
+      <rect x="0" y="46" width="155" height="2" fill="#0d99ff"/>
+      <g font-family="Inter, -apple-system, sans-serif" font-size="16" fill="#b8bdd4">
+        <text x="58" y="30" fill="#0d99ff" font-weight="600">Проблемы</text>
+        <text x="203" y="30">Правила</text>
+        <text x="340" y="30">Игноры</text>
+        <text x="470" y="30">Настройки</text>
+      </g>
+    </g>
+
+    <!-- Score -->
+    <g transform="translate(24,116)">
+      <text font-size="14" fill="#b8bdd4">Общая оценка</text>
+      <text x="130" y="2" font-size="28" font-weight="800" fill="#fff">74</text>
+      <g transform="translate(440,0)" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#fff">
+        <rect width="40" height="24" rx="6" fill="#f24822"/><text x="14" y="17">3</text>
+        <rect x="48" width="40" height="24" rx="6" fill="#ffa629"/><text x="62" y="17">6</text>
+        <rect x="96" width="40" height="24" rx="6" fill="#7b61ff"/><text x="110" y="17">12</text>
+      </g>
+    </g>
+
+    <!-- Issue cards -->
+    <g transform="translate(20,170)" font-family="Inter, sans-serif">
+      <g>
+        <rect width="580" height="94" rx="10" fill="#181c36" stroke="#2b3152"/>
+        <rect x="14" y="14" width="58" height="20" rx="4" fill="#f24822"/>
+        <text x="22" y="30" font-size="12" font-weight="700" fill="#fff">ERROR</text>
+        <text x="82" y="30" font-size="15" font-weight="700" fill="#fff">WCAG-контраст</text>
+        <text x="14" y="58" font-size="13" fill="#d8dcef">Контраст текста 3.12:1 ниже минимума 4.5:1.</text>
+        <text x="14" y="78" font-size="12" fill="#9aa1c4">→ Затемните текст или осветлите фон.</text>
+      </g>
+      <g transform="translate(0,108)">
+        <rect width="580" height="94" rx="10" fill="#181c36" stroke="#2b3152"/>
+        <rect x="14" y="14" width="76" height="20" rx="4" fill="#ffa629"/>
+        <text x="22" y="30" font-size="12" font-weight="700" fill="#1a1310">WARNING</text>
+        <text x="100" y="30" font-size="15" font-weight="700" fill="#fff">Touch-target (iOS)</text>
+        <text x="14" y="58" font-size="13" fill="#d8dcef">Таргет 30×30 меньше 44×44 px.</text>
+        <text x="14" y="78" font-size="12" fill="#9aa1c4">→ Увеличьте кнопку или добавьте hit-area.</text>
+      </g>
+      <g transform="translate(0,216)">
+        <rect width="580" height="94" rx="10" fill="#181c36" stroke="#2b3152"/>
+        <rect x="14" y="14" width="40" height="20" rx="4" fill="#7b61ff"/>
+        <text x="20" y="30" font-size="12" font-weight="700" fill="#fff">INFO</text>
+        <text x="64" y="30" font-size="15" font-weight="700" fill="#fff">Закон Хика</text>
+        <text x="14" y="58" font-size="13" fill="#d8dcef">В группе 9 действий — больше 7±2.</text>
+        <text x="14" y="78" font-size="12" fill="#9aa1c4">→ Сгруппируйте вторичные в «Ещё».</text>
+      </g>
+      <g transform="translate(0,324)">
+        <rect width="580" height="94" rx="10" fill="#181c36" stroke="#2b3152"/>
+        <rect x="14" y="14" width="26" height="20" rx="4" fill="#0d99ff"/>
+        <text x="20" y="30" font-size="11" font-weight="700" fill="#fff">AI</text>
+        <rect x="46" y="14" width="40" height="20" rx="4" fill="#7b61ff"/>
+        <text x="52" y="30" font-size="12" font-weight="700" fill="#fff">INFO</text>
+        <text x="96" y="30" font-size="15" font-weight="700" fill="#fff">Визуальный вес</text>
+        <text x="14" y="58" font-size="13" fill="#d8dcef">CTA теряется среди заголовков.</text>
+        <text x="14" y="78" font-size="12" fill="#9aa1c4">→ Усильте цвет и увеличьте размер кнопки.</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Низ: атрибуция -->
+  <g font-family="Inter, -apple-system, sans-serif">
+    <text x="120" y="1000" font-size="22" fill="#5b628a">design-libs.vercel.app</text>
+    <text x="1680" y="1000" font-size="22" fill="#5b628a" text-anchor="end">Figma Community</text>
+  </g>
+</svg>
