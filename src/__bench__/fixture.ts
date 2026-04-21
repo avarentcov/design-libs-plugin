@@ -228,7 +228,6 @@ export function makeRules(): FigmaRule[] {
     r('type-scale', 'font-sizes-scale', { maxDistinct: 5 }),
     r('font-pairing', 'font-families', { maxFamilies: 2 }),
     r('letter-spacing-caps', 'letter-spacing', { minPct: -1, maxPct: 2.5 }),
-    r('8pt-grid', 'grid-snap', { grid: 8 }),
     r('card-anatomy', 'radius-consistency', { maxVariants: 3 }),
     r('dark-borders', 'stroke-consistency', { maxWeights: 3 }),
     r('depth-layers', 'shadow-consistency', { minLevels: 3, maxLevels: 6 }),

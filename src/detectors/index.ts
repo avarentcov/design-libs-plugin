@@ -2,14 +2,14 @@ import type { DetectorId } from '../shared/rules-types'
 import { contrastNontext, contrastWcag, textOnImage } from './contrast'
 import { buttonMinSize, targetSpacing, touchTarget } from './targets'
 import { fontFamilies, fontSizeMin, fontSizesScale, letterSpacing, lineHeight, lineLength } from './typography'
-import { gridSnap, radiusConsistency, shadowConsistency, strokeConsistency } from './layout'
+import { radiusConsistency, shadowConsistency, strokeConsistency } from './layout'
 import { darkThemePurity, paletteSize } from './colorTheme'
 import { disabledVisible, focusVisible, missingLabel } from './forms'
 import { choiceCount } from './cognitive'
 import type { DetectorContext, DetectorFn, Recommendation } from './types'
 
-/** Реестр всех 22 детекторов. */
-export const DETECTORS: Record<DetectorId, DetectorFn> = {
+/** Реестр активных детекторов (grid-snap убран по решению — слишком шумит). */
+export const DETECTORS: Partial<Record<DetectorId, DetectorFn>> = {
   'contrast-wcag': contrastWcag,
   'contrast-nontext': contrastNontext,
   'text-on-image': textOnImage,
@@ -22,7 +22,6 @@ export const DETECTORS: Record<DetectorId, DetectorFn> = {
   'font-sizes-scale': fontSizesScale,
   'font-families': fontFamilies,
   'letter-spacing': letterSpacing,
-  'grid-snap': gridSnap,
   'radius-consistency': radiusConsistency,
   'stroke-consistency': strokeConsistency,
   'shadow-consistency': shadowConsistency,

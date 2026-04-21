@@ -1,11 +1,13 @@
 import type { DetectorFn, Recommendation } from './types'
 import { buildRecommendation } from '../shared/recommendation'
+import type { Severity } from '../shared/rules-types'
 import { byIdMap, resolveNodePath } from './utils/geometry'
 import { colorKey, firstVisibleSolid } from './utils/color'
 
-/** palette-size: ≤ N уникальных цветов. */
+/** palette-size: градиент. max = идеал, hardMax = когда error. */
 export const paletteSize: DetectorFn = ({ nodes, rule }) => {
-  const max = Number(rule.detector?.params?.max ?? 10)
+  const max = Number(rule.detector?.params?.max ?? 6)
+  const hardMax = Number(rule.detector?.params?.hardMax ?? 10)
   const colors = new Set<string>()
   for (const n of nodes) {
     const solid = firstVisibleSolid(n.fills)
@@ -14,29 +16,31 @@ export const paletteSize: DetectorFn = ({ nodes, rule }) => {
   if (colors.size <= max) return []
   const root = nodes[0]
   if (!root) return []
+  const severity: Severity = colors.size > hardMax ? 'error' : 'warning'
   return [
     buildRecommendation({
       rule,
       detectorId: 'palette-size',
       origin: 'auto',
+      severity,
       target: { nodeId: root.id, nodeName: root.name },
-      title: 'Раздутая палитра',
+      title: severity === 'error' ? 'Раздутая палитра' : 'Палитра шире рекомендуемой',
       summary: `В макете ${colors.size} уникальных цветов заливки.`,
       fix: {
         steps: [
-          `Сократите палитру до ${max} цветов.`,
-          'Используйте шкалу оттенков от одного базового цвета + семантические (success/warning/error).',
-          'Закрепите палитру в стилях/variables.',
+          `Сократите до ${max} цветов.`,
+          'Оттенки от базы + семантика (success/warning/error).',
+          'Закрепите палитру в токенах.',
         ],
         expected: `≤ ${max}`,
         actual: String(colors.size),
       },
-      measurements: { count: colors.size, max },
+      measurements: { count: colors.size, max, hardMax },
     }),
   ]
 }
 
-/** dark-theme-purity: не использовать #000/#FFF в тёмной теме. */
+/** dark-theme-purity. */
 export const darkThemePurity: DetectorFn = ({ nodes, rule, settings }) => {
   const out: Recommendation[] = []
   if (!settings.darkTheme) return out
@@ -58,12 +62,12 @@ export const darkThemePurity: DetectorFn = ({ nodes, rule, settings }) => {
         target: { nodeId: n.id, nodeName: n.name, path: resolveNodePath(n.id, byId) },
         title: isPureBlack ? 'Чистый #000 в тёмной теме' : 'Чистый #FFF в тёмной теме',
         summary: isPureBlack
-          ? 'Чистый чёрный делает UI «глухим» и увеличивает контраст до резкого.'
+          ? 'Чистый чёрный делает UI «глухим» и даёт слишком резкий контраст.'
           : 'Чистый белый текст на тёмном фоне мерцает и утомляет глаз.',
         fix: {
           steps: isPureBlack
-            ? ['Замените на #0B0B0F или #121214 для фона.', 'Для карточек используйте более светлый тон (#1A1B1F).']
-            : ['Снизьте яркость текста до #E6E6EA или #DDDDE4.', 'Для приглушённого текста — #A0A2AB.'],
+            ? ['Фон: #0B0B0F или #121214.', 'Карточки: #1A1B1F.']
+            : ['Основной текст: #E6E6EA или #DDDDE4.', 'Приглушённый: #A0A2AB.'],
           expected: isPureBlack ? '#0B0B0F / #121214' : '#E6E6EA',
           actual: isPureBlack ? '#000000' : '#FFFFFF',
         },

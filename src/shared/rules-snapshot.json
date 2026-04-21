@@ -183,7 +183,8 @@
       "detector": {
         "id": "font-sizes-scale",
         "params": {
-          "maxDistinct": 5
+          "maxDistinct": 4,
+          "hardMax": 6
         }
       },
       "tags": [
@@ -221,9 +222,10 @@
         "id": "line-length",
         "params": {
           "minCpl": 45,
-          "idealMin": 60,
-          "idealMax": 75,
-          "max": 90
+          "idealMin": 55,
+          "idealMax": 70,
+          "max": 80,
+          "hardMax": 100
         }
       },
       "tags": [
@@ -297,7 +299,9 @@
         "id": "contrast-wcag",
         "params": {
           "normal": 4.5,
-          "large": 3
+          "large": 3,
+          "strictNormal": 7,
+          "strictLarge": 4.5
         }
       },
       "tags": [
@@ -365,7 +369,9 @@
         "id": "contrast-wcag",
         "params": {
           "normal": 4.5,
-          "large": 3
+          "large": 3,
+          "strictNormal": 7,
+          "strictLarge": 4.5
         }
       },
       "tags": [
@@ -403,7 +409,8 @@
       "detector": {
         "id": "palette-size",
         "params": {
-          "max": 10
+          "max": 6,
+          "hardMax": 10
         }
       },
       "tags": [
@@ -472,7 +479,8 @@
       "detector": {
         "id": "contrast-nontext",
         "params": {
-          "minRatio": 3
+          "minRatio": 3,
+          "strictRatio": 4.5
         }
       },
       "tags": [
@@ -509,7 +517,8 @@
       "detector": {
         "id": "palette-size",
         "params": {
-          "max": 10
+          "max": 6,
+          "hardMax": 10
         }
       },
       "tags": [
@@ -543,13 +552,7 @@
       "antiPattern": "Отступы 5px, 11px, 17px, 23px — нет системы, каждый новый экран выглядит по-другому.",
       "impact": 3,
       "severity": "info",
-      "checkType": "auto",
-      "detector": {
-        "id": "grid-snap",
-        "params": {
-          "grid": 8
-        }
-      },
+      "checkType": "manual",
       "tags": [
         "Rule"
       ],
@@ -674,13 +677,7 @@
       "antiPattern": "Карточка A — паддинг 12px, карточка B — 20px, карточка C — 16px. Одинаковые по смыслу, разные по ощущениям.",
       "impact": 3,
       "severity": "info",
-      "checkType": "auto",
-      "detector": {
-        "id": "grid-snap",
-        "params": {
-          "grid": 8
-        }
-      },
+      "checkType": "manual",
       "tags": [
         "Rule"
       ],
@@ -715,8 +712,8 @@
       "detector": {
         "id": "button-min-size",
         "params": {
-          "minWidth": 44,
-          "minHeight": 44
+          "minWidth": 48,
+          "minHeight": 48
         }
       },
       "tags": [
@@ -756,7 +753,10 @@
         "params": {
           "ios": 44,
           "android": 48,
-          "web": 24
+          "web": 44,
+          "strictIos": 48,
+          "strictAndroid": 56,
+          "strictWeb": 48
         }
       },
       "tags": [
@@ -788,12 +788,13 @@
       "example": "Карточки Airbnb: фото → рейтинг → название → цена за ночь. Четыре элемента, иерархия считывается мгновенно.",
       "antiPattern": "Карточка с 8 полями данных, тремя кнопками и двумя бейджами — перегруженная и не фокусирует.",
       "impact": 3,
-      "severity": "info",
+      "severity": "warning",
       "checkType": "auto",
       "detector": {
         "id": "radius-consistency",
         "params": {
-          "maxVariants": 3
+          "maxVariants": 2,
+          "hardMax": 4
         }
       },
       "tags": [
@@ -1044,13 +1045,14 @@
       ],
       "example": "Material Design Dark: каждый уровень overlay добавляет прозрачный белый слой к базовому цвету — 0% (фон), 5% (карточка), 8% (FAB), 12% (drawer).",
       "impact": 3,
-      "severity": "info",
+      "severity": "warning",
       "checkType": "auto",
       "detector": {
         "id": "shadow-consistency",
         "params": {
-          "minLevels": 3,
-          "maxLevels": 6
+          "minLevels": 2,
+          "maxLevels": 4,
+          "hardMax": 6
         }
       },
       "tags": [
@@ -1088,7 +1090,9 @@
         "id": "contrast-wcag",
         "params": {
           "normal": 4.5,
-          "large": 3
+          "large": 3,
+          "strictNormal": 7,
+          "strictLarge": 4.5
         }
       },
       "tags": [
@@ -1183,7 +1187,7 @@
       "example": "Twitter/X: тёмная тема использует #000 для OLED и #15202b для LCD — два варианта для разных экранов.",
       "antiPattern": "Все фоны строго #000000: карточки, modals, sidebar — всё одного цвета, нет глубины.",
       "impact": 3,
-      "severity": "info",
+      "severity": "warning",
       "checkType": "auto",
       "detector": {
         "id": "dark-theme-purity"
@@ -1437,13 +1441,14 @@
       "example": "Material Design: elevation-система с 5 уровнями тени от 0dp до 24dp.",
       "antiPattern": "Карточка с border + shadow + outline — визуальный шум, достаточно одного приёма.",
       "impact": 3,
-      "severity": "info",
+      "severity": "warning",
       "checkType": "auto",
       "detector": {
         "id": "shadow-consistency",
         "params": {
-          "minLevels": 3,
-          "maxLevels": 6
+          "minLevels": 2,
+          "maxLevels": 4,
+          "hardMax": 6
         }
       },
       "tags": [
@@ -1596,8 +1601,10 @@
       "detector": {
         "id": "line-height",
         "params": {
-          "bodyMin": 1.4,
-          "bodyMax": 1.6
+          "bodyMin": 1.5,
+          "bodyMax": 1.6,
+          "softMin": 1.35,
+          "softMax": 1.75
         }
       },
       "tags": [
@@ -1691,9 +1698,10 @@
         "id": "line-length",
         "params": {
           "minCpl": 45,
-          "idealMin": 60,
-          "idealMax": 75,
-          "max": 90
+          "idealMin": 55,
+          "idealMax": 70,
+          "max": 80,
+          "hardMax": 100
         }
       },
       "tags": [
@@ -1815,8 +1823,10 @@
       "detector": {
         "id": "letter-spacing",
         "params": {
-          "minPct": -1,
-          "maxPct": 2.5
+          "minPct": -0.5,
+          "maxPct": 2,
+          "hardMin": -1,
+          "hardMax": 3
         }
       },
       "tags": [
@@ -1942,7 +1952,8 @@
       "detector": {
         "id": "palette-size",
         "params": {
-          "max": 12
+          "max": 8,
+          "hardMax": 12
         }
       },
       "tags": [
@@ -2031,13 +2042,7 @@
       "example": "Tailwind default: spacing 0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4... — всё кратно 4px.",
       "impact": 3,
       "severity": "info",
-      "checkType": "auto",
-      "detector": {
-        "id": "grid-snap",
-        "params": {
-          "grid": 8
-        }
-      },
+      "checkType": "manual",
       "tags": [
         "Rule"
       ],
@@ -2159,7 +2164,10 @@
         "params": {
           "ios": 44,
           "android": 48,
-          "web": 24
+          "web": 44,
+          "strictIos": 48,
+          "strictAndroid": 56,
+          "strictWeb": 48
         }
       },
       "tags": [
@@ -2194,7 +2202,8 @@
       "detector": {
         "id": "target-spacing",
         "params": {
-          "minClearance": 24
+          "minClearance": 32,
+          "strictClearance": 40
         }
       },
       "tags": [
@@ -2458,7 +2467,7 @@
       ],
       "example": "shadcn/ui: все компоненты имеют focus-visible с синим ring.",
       "impact": 3,
-      "severity": "info",
+      "severity": "warning",
       "checkType": "auto",
       "detector": {
         "id": "focus-visible"
@@ -2524,7 +2533,8 @@
       "detector": {
         "id": "disabled-visible",
         "params": {
-          "minContrast": 3
+          "minContrast": 4.5,
+          "softMin": 3
         }
       },
       "tags": [
@@ -2786,12 +2796,13 @@
       ],
       "example": "Linear (dark mode): тонкие borders для всех карточек, ноль теней.",
       "impact": 3,
-      "severity": "info",
+      "severity": "warning",
       "checkType": "auto",
       "detector": {
         "id": "stroke-consistency",
         "params": {
-          "maxWeights": 3
+          "maxWeights": 2,
+          "hardMax": 4
         }
       },
       "tags": [
@@ -3321,7 +3332,9 @@
         "id": "contrast-wcag",
         "params": {
           "normal": 4.5,
-          "large": 3
+          "large": 3,
+          "strictNormal": 7,
+          "strictLarge": 4.5
         }
       },
       "tags": [
@@ -3352,13 +3365,7 @@
       "example": "Tailwind breakpoints: sm (640px), md (768px), lg (1024px), xl (1280px).",
       "impact": 3,
       "severity": "info",
-      "checkType": "auto",
-      "detector": {
-        "id": "grid-snap",
-        "params": {
-          "grid": 4
-        }
-      },
+      "checkType": "manual",
       "tags": [
         "Technique"
       ],
@@ -3391,7 +3398,8 @@
       "detector": {
         "id": "font-size-min",
         "params": {
-          "min": 12
+          "min": 14,
+          "softMin": 12
         }
       },
       "tags": [
@@ -3515,7 +3523,9 @@
       "detector": {
         "id": "choice-count",
         "params": {
-          "max": 7
+          "soft": 5,
+          "max": 7,
+          "hardMax": 9
         }
       },
       "tags": [

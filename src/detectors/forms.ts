@@ -1,5 +1,6 @@
 import type { DetectorFn, Recommendation } from './types'
 import { buildRecommendation } from '../shared/recommendation'
+import type { Severity } from '../shared/rules-types'
 import { byIdMap, rectsOverlap, resolveNodePath } from './utils/geometry'
 import { contrastRatio, firstVisibleSolid, flatten, resolveBackground } from './utils/color'
 
@@ -7,7 +8,7 @@ function isField(name: string): boolean {
   return /input|field|textarea|select|search|email|password|combobox/i.test(name)
 }
 
-/** missing-label: у поля должна быть видимая метка. */
+/** missing-label: без подписи — ошибка. */
 export const missingLabel: DetectorFn = ({ nodes, rule }) => {
   const out: Recommendation[] = []
   const byId = byIdMap(nodes)
@@ -32,8 +33,8 @@ export const missingLabel: DetectorFn = ({ nodes, rule }) => {
         fix: {
           steps: [
             'Добавьте текстовую подпись-лейбл сверху поля.',
-            'В коде — атрибут `aria-label` или связка `<label for>` для скринридеров.',
-            'Плейсхолдер не заменяет лейбл — он исчезает при вводе.',
+            'В коде — `aria-label` или `<label for>` для скринридеров.',
+            'Плейсхолдер не заменяет лейбл.',
           ],
         },
       }),
@@ -42,32 +43,37 @@ export const missingLabel: DetectorFn = ({ nodes, rule }) => {
   return out
 }
 
-/** disabled-visible: disabled не должен сливаться с фоном. */
+/** disabled-visible: градиент по контрасту. */
 export const disabledVisible: DetectorFn = ({ nodes, rule }) => {
   const out: Recommendation[] = []
   const byId = byIdMap(nodes)
-  const minContrast = Number(rule.detector?.params?.minContrast ?? 3)
+  const minContrast = Number(rule.detector?.params?.minContrast ?? 4.5)
+  const softMin = Number(rule.detector?.params?.softMin ?? 3)
   for (const n of nodes) {
     if (!/disabled|inactive/i.test(n.name)) continue
     const fg = firstVisibleSolid(n.fills)
     if (!fg) continue
     const bg = resolveBackground(n, byId, { r: 1, g: 1, b: 1, a: 1 })
     const ratio = contrastRatio(flatten(fg, bg), bg)
-    if (ratio >= minContrast) continue
+    let severity: Severity | null = null
+    if (ratio < softMin) severity = 'error'
+    else if (ratio < minContrast) severity = 'warning'
+    if (!severity) continue
     out.push(
       buildRecommendation({
         rule,
         detectorId: 'disabled-visible',
         origin: 'auto',
+        severity,
         target: { nodeId: n.id, nodeName: n.name, path: resolveNodePath(n.id, byId) },
-        title: 'Disabled сливается с фоном',
-        summary: `Контраст ${ratio.toFixed(2)}:1 — элемент почти не виден.`,
+        title: severity === 'error' ? 'Disabled сливается с фоном' : 'Disabled со слабым контрастом',
+        summary: `Контраст ${ratio.toFixed(2)}:1 — элемент ${severity === 'error' ? 'почти не виден' : 'читается с трудом'}.`,
         fix: {
           steps: [
-            `Сохраните контраст ≥ ${minContrast}:1 даже для disabled.`,
+            `Сохраняйте контраст ≥ ${severity === 'error' ? softMin : minContrast}:1 для disabled.`,
             'Снижайте насыщенность, а не opacity до нечитаемого.',
           ],
-          expected: `≥ ${minContrast}:1`,
+          expected: `≥ ${severity === 'error' ? softMin : minContrast}:1`,
           actual: `${ratio.toFixed(2)}:1`,
         },
         measurements: { ratio: Number(ratio.toFixed(2)) },
@@ -77,7 +83,7 @@ export const disabledVisible: DetectorFn = ({ nodes, rule }) => {
   return out
 }
 
-/** focus-visible: должны быть focus-состояния. */
+/** focus-visible. */
 export const focusVisible: DetectorFn = ({ nodes, rule }) => {
   const hasAnyFocus = nodes.some((n) => /focus|focused/i.test(n.name))
   const hasInteractive = nodes.some((n) => /btn|button|input|field|tab/i.test(n.name))
@@ -96,7 +102,7 @@ export const focusVisible: DetectorFn = ({ nodes, rule }) => {
       fix: {
         steps: [
           'Добавьте варианты компонентов с focus-ring (обводка 2 px).',
-          'Используйте контрастный цвет, отличающийся от hover.',
+          'Контрастный цвет, отличающийся от hover.',
           'Проверьте навигацию Tab клавиатурой.',
         ],
       },
