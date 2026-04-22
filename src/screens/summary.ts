@@ -1,11 +1,17 @@
 import type { Recommendation } from '../shared/recommendation'
 import type { Severity } from '../shared/rules-types'
 
-const WEIGHTS: Record<Severity, number> = { error: 10, warning: 3, info: 1 }
+const WEIGHTS: Record<Severity, number> = { error: 5, warning: 2, info: 0.5 }
 
+/**
+ * Плавная оценка 0–100 с затуханием: 100 / (1 + penalty/K).
+ * K=50 — «нейтральная точка»: при penalty=50 оценка=50, при penalty=200 → ~20.
+ * Никогда не падает в 0 — даже при большом числе проблем остаётся ориентир.
+ */
 export function computeScore(issues: Array<{ severity: Severity }>): number {
   const penalty = issues.reduce((acc, i) => acc + WEIGHTS[i.severity], 0)
-  return Math.max(0, 100 - penalty)
+  if (penalty === 0) return 100
+  return Math.max(1, Math.round(100 / (1 + penalty / 50)))
 }
 
 function severityHeading(sev: Severity): string {

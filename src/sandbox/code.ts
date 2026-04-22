@@ -13,7 +13,7 @@ figma.showUI(__html__, { width: UI_WIDTH, height: UI_HEIGHT, themeColors: true }
 postToUi({
   type: 'init',
   documentName: figma.root.name,
-  userName: figma.currentUser?.name ?? null,
+  userName: null,
 })
 
 function currentSelectionPayload() {
@@ -62,10 +62,18 @@ figma.ui.onmessage = async (msg: UiToSandbox) => {
 
     case 'jump-to-node': {
       const node = await figma.getNodeByIdAsync(msg.nodeId)
-      if (node && 'type' in node && node.type !== 'DOCUMENT' && node.type !== 'PAGE') {
-        figma.currentPage.selection = [node as SceneNode]
-        figma.viewport.scrollAndZoomIntoView([node as SceneNode])
+      if (!node || !('type' in node) || node.type === 'DOCUMENT' || node.type === 'PAGE') {
+        figma.notify('Не удалось найти слой', { error: true })
+        return
       }
+      // Ноду могли перенести на другую страницу — найдём её родительскую и переключимся.
+      let parent: BaseNode | null = node.parent
+      while (parent && parent.type !== 'PAGE') parent = parent.parent
+      if (parent && parent.type === 'PAGE' && parent.id !== figma.currentPage.id) {
+        await figma.setCurrentPageAsync(parent as PageNode)
+      }
+      figma.currentPage.selection = [node as SceneNode]
+      figma.viewport.scrollAndZoomIntoView([node as SceneNode])
       return
     }
 

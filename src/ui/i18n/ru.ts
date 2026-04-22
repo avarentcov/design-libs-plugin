@@ -1,14 +1,13 @@
 export const t = {
   app: {
-    title: 'Design Libs Inspector',
+    title: 'DESIGN Library',
     selectSomething: 'Выделите фрейм, чтобы запустить аудит.',
     noRules: 'Правила не загружены. Откройте «Настройки» и нажмите «Обновить каталог».',
   },
   tabs: {
-    issues: 'Проблемы',
-    learn: 'Правила',
+    audit: 'Аудит',
+    ai: 'AI-аудит',
     settings: 'Настройки',
-    ignored: 'Игноры',
   },
   actions: {
     runAudit: 'Запустить аудит',
@@ -48,7 +47,6 @@ export const t = {
     apiKeyHint: 'Храним только у вас на устройстве (Figma clientStorage).',
     model: 'Модель',
     platform: 'Платформа',
-    grid: 'Сетка (px)',
     darkTheme: 'Тёмная тема',
     rulesCached: 'Правил в кеше',
     savedAt: 'Кеш от',
@@ -67,19 +65,15 @@ export const t = {
     noIssues: 'Нарушений не найдено. Отличный макет.',
     needSelection: 'Выделите фрейм для аудита.',
     aiRunning: 'Claude смотрит на макет…',
+    noApiKey: 'Введите API-ключ Anthropic в «Настройках», чтобы запустить AI-анализ.',
+    openSettings: 'Открыть настройки',
+    noIssuesAi: 'AI не нашёл нарушений.',
+    jump: 'Перейти к слою',
+    allRules: 'Все правила',
   },
   errors: {
     apiKeyMissing: 'Введите API-ключ в «Настройках».',
     exportFailed: 'Не удалось экспортировать фрейм.',
     fetchRulesFailed: 'Не удалось загрузить каталог правил.',
-  },
-  learn: {
-    forSelected: 'Правила для выделения',
-    allRules: 'Все правила',
-    empty: 'Выделите слой, чтобы увидеть подходящие правила.',
-  },
-  ignored: {
-    empty: 'Пока ничего не игнорируется.',
-    countLabel: 'Игнорируется',
   },
 } as const

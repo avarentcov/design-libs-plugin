@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { FigmaRule, FigmaRulesResponse, Severity } from '../shared/rules-types'
+import type { FigmaRule, FigmaRulesResponse } from '../shared/rules-types'
 import type { SerializedNode } from '../shared/serialize'
 import { postToSandbox, type SandboxToUi, type UiToSandbox } from '../shared/messages'
 import type { Platform } from '../detectors/types'
@@ -7,40 +7,32 @@ import { runAutoAudit } from '../detectors'
 import { buildRecommendation, type Recommendation } from '../shared/recommendation'
 import { BUNDLED_AT, BUNDLED_RULES } from '../shared/rules-bundle'
 import { DEFAULT_MODEL, type ClaudeModel, runVisionAudit } from '../vision/claude'
-import { DEFAULT_SERVER_URL, runServerVisionAudit, ServerAuditError } from '../vision/server'
 import {
-  PLUGIN_DATA_KEYS,
   STORAGE_KEYS,
   getClientStorage,
-  getPluginData,
   installStorageBridge,
   readJson,
   setClientStorage,
-  setPluginData,
   writeJson,
 } from '../storage/client'
 import { SettingsScreen, type SettingsValue } from '../screens/SettingsScreen'
 import { IssuesScreen } from '../screens/IssuesScreen'
-import { LearnScreen } from '../screens/LearnScreen'
-import { IgnoredScreen, type IgnoredEntry } from '../screens/IgnoredScreen'
 import { computeScore, renderFixSnippet, renderMarkdownReport } from '../screens/summary'
-import { colors } from './theme'
 import { t } from './i18n/ru'
 import { copyToClipboard } from './clipboard'
+import { LOGO_DATA_URI } from './logo'
+import { ExternalLink } from './icons'
 
 const DEFAULT_RULES_URL = 'https://design-libs.vercel.app/api/figma-rules/v1'
 
-type Tab = 'issues' | 'learn' | 'settings' | 'ignored'
+type Tab = 'audit' | 'ai' | 'settings'
 
 const DEFAULT_SETTINGS: SettingsValue = {
   apiKey: '',
   model: DEFAULT_MODEL,
   platform: 'web',
-  gridSize: 8,
   darkTheme: false,
   apiUrl: DEFAULT_RULES_URL,
-  aiMode: 'server',
-  aiServerUrl: DEFAULT_SERVER_URL,
 }
 
 interface CachedRules {
@@ -51,7 +43,7 @@ interface CachedRules {
 type RulesSource = 'bundle' | 'cache' | 'api'
 
 export function App() {
-  const [tab, setTab] = useState<Tab>('issues')
+  const [tab, setTab] = useState<Tab>('audit')
   const [docName, setDocName] = useState('—')
   const [selection, setSelection] = useState<SerializedNode[]>([])
   const [rules, setRules] = useState<FigmaRule[]>(BUNDLED_RULES.rules)
@@ -61,7 +53,6 @@ export function App() {
   const [cachedAt, setCachedAt] = useState<string | null>(null)
   const [settings, setSettings] = useState<SettingsValue>(DEFAULT_SETTINGS)
   const [issues, setIssues] = useState<Recommendation[]>([])
-  const [ignored, setIgnored] = useState<IgnoredEntry[]>([])
   const [isRunning, setIsRunning] = useState(false)
   const [isAiRunning, setIsAiRunning] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -104,11 +95,6 @@ export function App() {
     await refreshRules(url, true)
   }, [refreshRules])
 
-  const loadIgnored = useCallback(async () => {
-    const list = await readJson<IgnoredEntry[]>(getPluginData, PLUGIN_DATA_KEYS.ignored, [])
-    setIgnored(list)
-  }, [])
-
   useEffect(() => {
     const off = installStorageBridge()
     function onMessage(e: MessageEvent) {
@@ -132,7 +118,6 @@ export function App() {
       const savedKey = (await getClientStorage(STORAGE_KEYS.apiKey)) ?? ''
       const effective: SettingsValue = { ...DEFAULT_SETTINGS, ...savedSettings, apiKey: savedKey }
       setSettings(effective)
-      await loadIgnored()
 
       // 1. Если в clientStorage свежий кеш новее bundle'а — подставляем его.
       const cached = await readJson<CachedRules | null>(getClientStorage, STORAGE_KEYS.rulesCache, null)
@@ -147,12 +132,10 @@ export function App() {
       window.removeEventListener('message', onMessage)
       off()
     }
-  }, [applyPayload, loadIgnored, refreshRules])
+  }, [applyPayload, refreshRules])
 
   const canRun = selection.length > 0 && rules.length > 0
-  const canRunAi = canRun && (settings.aiMode === 'server' || settings.apiKey.trim().length > 0)
-
-  const ignoredIds = useMemo(() => new Set(ignored.map((e) => e.id)), [ignored])
+  const canRunAi = canRun && settings.apiKey.trim().length > 0
 
   const runAudit = useCallback(() => {
     if (!canRun) return
@@ -161,19 +144,19 @@ export function App() {
       const recs = runAutoAudit(
         {
           nodes: selection,
-          settings: { platform: settings.platform as Platform, gridSize: settings.gridSize, darkTheme: settings.darkTheme },
+          settings: { platform: settings.platform as Platform, darkTheme: settings.darkTheme },
         },
         rules,
       )
-      setIssues(recs.filter((r) => !ignoredIds.has(r.id)))
+      setIssues(recs)
     } finally {
       setIsRunning(false)
     }
-  }, [canRun, selection, settings, rules, ignoredIds])
+  }, [canRun, selection, settings, rules])
 
   const runAi = useCallback(async () => {
     if (!canRunAi) {
-      notify(settings.aiMode === 'byok' ? t.errors.apiKeyMissing : 'Нечего проверять.', true)
+      notify(t.errors.apiKeyMissing, true)
       return
     }
     setIsAiRunning(true)
@@ -198,36 +181,12 @@ export function App() {
         setTimeout(() => reject(new Error('Timeout экспорта')), 8000)
       })
       const aiRules = rules.filter((r) => r.checkType === 'ai').slice(0, 40)
-      let res
-      if (settings.aiMode === 'server') {
-        try {
-          res = await runServerVisionAudit({
-            serverUrl: settings.aiServerUrl || DEFAULT_SERVER_URL,
-            model: settings.model as ClaudeModel,
-            pngBase64: png,
-            rules: aiRules,
-          })
-        } catch (err) {
-          if (err instanceof ServerAuditError && err.code === 'ai_rate_limit' && settings.apiKey) {
-            notify('Серверный лимит — пробую с вашим ключом…')
-            res = await runVisionAudit({
-              apiKey: settings.apiKey,
-              model: settings.model as ClaudeModel,
-              pngBase64: png,
-              rules: aiRules,
-            })
-          } else {
-            throw err
-          }
-        }
-      } else {
-        res = await runVisionAudit({
-          apiKey: settings.apiKey,
-          model: settings.model as ClaudeModel,
-          pngBase64: png,
-          rules: aiRules,
-        })
-      }
+      const res = await runVisionAudit({
+        apiKey: settings.apiKey,
+        model: settings.model as ClaudeModel,
+        pngBase64: png,
+        rules: aiRules,
+      })
       const rulesById = new Map(rules.map((r) => [r.id, r]))
       const firstNode = selection[0]
       const aiRecs: Recommendation[] = []
@@ -252,7 +211,7 @@ export function App() {
       }
       setIssues((prev) => {
         const withoutAi = prev.filter((p) => p.origin !== 'ai')
-        return [...withoutAi, ...aiRecs.filter((r) => !ignoredIds.has(r.id))]
+        return [...withoutAi, ...aiRecs]
       })
       notify(`AI добавил: ${aiRecs.length}${res.usage ? ` · tokens ${res.usage.inputTokens}/${res.usage.outputTokens}` : ''}`)
     } catch (err) {
@@ -260,7 +219,7 @@ export function App() {
     } finally {
       setIsAiRunning(false)
     }
-  }, [canRunAi, selection, settings, rules, ignoredIds, notify])
+  }, [canRunAi, selection, settings, rules, notify])
 
   const saveSettings = useCallback(async (v: SettingsValue) => {
     const { apiKey, ...rest } = v
@@ -275,110 +234,97 @@ export function App() {
     }
   }, [notify, settings.apiUrl, loadRules])
 
-  const addIgnore = useCallback(async (id: string) => {
-    const rec = issues.find((i) => i.id === id)
-    if (!rec) return
-    const entry: IgnoredEntry = {
-      id: rec.id,
-      ruleId: rec.ruleId,
-      nodeId: rec.target.nodeId,
-      nodeName: rec.target.nodeName,
-      title: rec.title,
-      ignoredAt: new Date().toISOString(),
-    }
-    const next = [...ignored, entry]
-    setIgnored(next)
-    setIssues((arr) => arr.filter((i) => i.id !== id))
-    await setPluginData(PLUGIN_DATA_KEYS.ignored, JSON.stringify(next))
-  }, [ignored, issues])
-
-  const restoreIgnore = useCallback(async (e: IgnoredEntry) => {
-    const next = ignored.filter((x) => x.id !== e.id)
-    setIgnored(next)
-    await setPluginData(PLUGIN_DATA_KEYS.ignored, JSON.stringify(next))
-  }, [ignored])
-
-  const exportMd = useCallback(async () => {
+  const exportMdFor = useCallback(async (subset: Recommendation[]) => {
     const md = renderMarkdownReport({
-      score: computeScore(issues),
+      score: computeScore(subset),
       docName,
-      recommendations: issues,
+      recommendations: subset,
     })
     const ok = await copyToClipboard(md)
     notify(ok ? t.actions.copy : 'Не удалось скопировать в буфер', !ok)
-  }, [issues, docName, notify])
+  }, [docName, notify])
 
   const copyFix = useCallback(async (rec: Recommendation) => {
     const ok = await copyToClipboard(renderFixSnippet(rec))
     notify(ok ? t.actions.copy : 'Не удалось скопировать в буфер', !ok)
   }, [notify])
 
-  const score = useMemo(() => computeScore(issues), [issues])
-  const severityCounts = useMemo(() => {
-    const c = { error: 0, warning: 0, info: 0 } as Record<Severity, number>
-    for (const i of issues) c[i.severity] += 1
-    return c
-  }, [issues])
-  void severityCounts
+  const autoIssues = useMemo(() => issues.filter((i) => i.origin !== 'ai'), [issues])
+  const aiIssues = useMemo(() => issues.filter((i) => i.origin === 'ai'), [issues])
+  const autoScore = useMemo(() => computeScore(autoIssues), [autoIssues])
+  const aiScore = useMemo(() => computeScore(aiIssues), [aiIssues])
+  const onJump = useCallback((id: string) => postToSandbox({ type: 'jump-to-node', nodeId: id }), [])
 
   const TABS: Array<{ id: Tab; label: string }> = [
-    { id: 'issues', label: t.tabs.issues },
-    { id: 'learn', label: t.tabs.learn },
-    { id: 'ignored', label: t.tabs.ignored },
+    { id: 'audit', label: t.tabs.audit },
+    { id: 'ai', label: t.tabs.ai },
     { id: 'settings', label: t.tabs.settings },
   ]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: colors.bg, color: colors.text }}>
-      <header style={{
-        padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8,
-        borderBottom: `1px solid ${colors.border}`,
-      }}>
-        <strong style={{ fontSize: 13 }}>{t.app.title}</strong>
-        <span style={{ fontSize: 11, color: colors.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          · {docName}
-        </span>
+    <div className="flex flex-col h-full bg-background text-foreground">
+      <header className="px-3 pt-3 pb-2 flex items-center gap-2">
+        <img src={LOGO_DATA_URI} width={22} height={22} alt="" className="rounded-md flex-shrink-0" />
+        <strong className="text-sm font-semibold tracking-tight">{t.app.title}</strong>
+        <a
+          href="https://design-libs.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ml-auto inline-flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          title="design-libs.vercel.app"
+          aria-label="Открыть design-libs.vercel.app"
+        >
+          <ExternalLink size={13} />
+        </a>
       </header>
 
-      <nav style={{ display: 'flex', borderBottom: `1px solid ${colors.border}` }}>
+      <nav className="flex border-b border-border bg-background px-1">
         {TABS.map((tb) => (
           <button
             key={tb.id}
             type="button"
             onClick={() => setTab(tb.id)}
-            style={{
-              flex: 1,
-              padding: '8px 4px',
-              fontSize: 11,
-              border: 'none',
-              background: 'transparent',
-              color: tab === tb.id ? colors.brand : colors.textSecondary,
-              borderBottom: `2px solid ${tab === tb.id ? colors.brand : 'transparent'}`,
-              cursor: 'pointer',
-            }}
+            className={
+              'flex-1 py-2.5 px-2 text-[11px] font-medium transition-colors ' +
+              (tab === tb.id
+                ? 'text-foreground border-b-2 border-foreground -mb-px'
+                : 'text-muted-foreground border-b-2 border-transparent hover:text-foreground')
+            }
           >{tb.label}</button>
         ))}
       </nav>
 
-      <main style={{ flex: 1, minHeight: 0 }}>
-        {tab === 'issues' && (
+      <main className="flex-1 min-h-0">
+        {tab === 'audit' && (
           <IssuesScreen
-            issues={issues}
+            mode="auto"
+            issues={autoIssues}
+            rules={rules}
             isRunning={isRunning}
-            isAiRunning={isAiRunning}
             canRun={canRun}
-            canRunAi={canRunAi}
             onRun={runAudit}
-            onRunAi={runAi}
-            onJump={(id) => postToSandbox({ type: 'jump-to-node', nodeId: id })}
-            onIgnore={addIgnore}
-            onSummaryExport={exportMd}
+            onJump={onJump}
+            onSummaryExport={() => exportMdFor(autoIssues)}
             onCopyFix={copyFix}
-            score={score}
+            score={autoScore}
           />
         )}
-        {tab === 'learn' && <LearnScreen rules={rules} selection={selection} />}
-        {tab === 'ignored' && <IgnoredScreen entries={ignored} rules={rules} onRestore={restoreIgnore} />}
+        {tab === 'ai' && (
+          <IssuesScreen
+            mode="ai"
+            issues={aiIssues}
+            rules={rules}
+            isRunning={isAiRunning}
+            canRun={canRunAi}
+            hasApiKey={settings.apiKey.trim().length > 0}
+            onOpenSettings={() => setTab('settings')}
+            onRun={runAi}
+            onJump={onJump}
+            onSummaryExport={() => exportMdFor(aiIssues)}
+            onCopyFix={copyFix}
+            score={aiScore}
+          />
+        )}
         {tab === 'settings' && (
           <SettingsScreen
             value={settings}
@@ -401,11 +347,9 @@ export function App() {
       </main>
 
       {toast ? (
-        <div style={{
-          position: 'absolute', left: 12, right: 12, bottom: 12,
-          padding: '6px 10px', borderRadius: 6, fontSize: 11,
-          background: colors.text, color: colors.bg, textAlign: 'center', opacity: 0.9,
-        }}>{toast}</div>
+        <div className="absolute left-3 right-3 bottom-3 px-3 py-1.5 rounded-md text-[11px] bg-foreground text-background text-center opacity-90 shadow-lg">
+          {toast}
+        </div>
       ) : null}
     </div>
   )

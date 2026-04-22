@@ -6,13 +6,11 @@ export type Platform = 'ios' | 'android' | 'web'
 
 export interface DetectorSettings {
   platform: Platform
-  gridSize: number // 4 | 8
   darkTheme: boolean
 }
 
 export const DEFAULT_SETTINGS: DetectorSettings = {
   platform: 'web',
-  gridSize: 8,
   darkTheme: false,
 }
 

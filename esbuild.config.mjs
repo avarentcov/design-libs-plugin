@@ -2,6 +2,7 @@ import { context, build } from 'esbuild'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { spawn } from 'node:child_process'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = __dirname
@@ -38,10 +39,29 @@ const uiOptions = {
   },
 }
 
+function runTailwind({ watch = false } = {}) {
+  return new Promise((res, rej) => {
+    const args = [
+      'tailwindcss',
+      '-i', resolve(ROOT, 'src/ui/globals.css'),
+      '-o', resolve(DIST, 'ui.css'),
+      '--minify',
+    ]
+    if (watch) args.push('--watch')
+    const p = spawn('npx', args, { stdio: watch ? 'inherit' : 'pipe', cwd: ROOT })
+    if (watch) { res(p); return }
+    p.on('exit', (code) => code === 0 ? res() : rej(new Error('tailwind failed')))
+  })
+}
+
 async function buildHtml() {
   const tpl = await readFile(resolve(ROOT, 'src/ui/index.html'), 'utf8')
   const js = await readFile(resolve(DIST, 'ui.js'), 'utf8')
-  const html = tpl.replace('<!--INLINE_SCRIPT-->', `<script>${js}</script>`)
+  let css = ''
+  try { css = await readFile(resolve(DIST, 'ui.css'), 'utf8') } catch {}
+  const html = tpl
+    .replace('<!--INLINE_STYLE-->', `<style>${css}</style>`)
+    .replace('<!--INLINE_SCRIPT-->', `<script>${js}</script>`)
   await writeFile(resolve(DIST, 'ui.html'), html, 'utf8')
 }
 
@@ -62,9 +82,11 @@ if (watch) {
       },
     ],
   })
+  void runTailwind({ watch: true })
   await Promise.all([sandbox.watch(), ui.watch()])
   console.log('🔄 watching…')
 } else {
+  await runTailwind()
   await build(sandboxOptions)
   await build(uiOptions)
   await buildHtml()
