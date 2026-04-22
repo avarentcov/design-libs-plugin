@@ -115,6 +115,16 @@ export function Info(p: IconProps = {}) {
   )
 }
 
+export function Download(p: IconProps = {}) {
+  return (
+    <svg {...base(p.size, p.strokeWidth, p.style)}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" x2="12" y1="15" y2="3" />
+    </svg>
+  )
+}
+
 export function FileText(p: IconProps = {}) {
   return (
     <svg {...base(p.size, p.strokeWidth, p.style)}>
@@ -161,6 +171,42 @@ export function Play(p: IconProps = {}) {
   return (
     <svg {...base(p.size, p.strokeWidth, p.style)}>
       <polygon points="6 3 20 12 6 21 6 3" fill="currentColor" />
+    </svg>
+  )
+}
+
+export function CheckCircle2(p: IconProps = {}) {
+  return (
+    <svg {...base(p.size, p.strokeWidth, p.style)}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  )
+}
+
+export function MousePointer(p: IconProps = {}) {
+  return (
+    <svg {...base(p.size, p.strokeWidth, p.style)}>
+      <path d="M6 3a1 1 0 0 0-1 1v14.5a.5.5 0 0 0 .8.4l4.4-3.1a1 1 0 0 1 1.2 0l5 3.8a.5.5 0 0 0 .8-.6L13.2 12H19a1 1 0 0 0 .7-1.7L6.7 3.3A1 1 0 0 0 6 3Z" />
+    </svg>
+  )
+}
+
+export function FilterX(p: IconProps = {}) {
+  return (
+    <svg {...base(p.size, p.strokeWidth, p.style)}>
+      <path d="M13.013 3H2l8 9.46V19l4 2v-8.54l.9-1.055" />
+      <path d="m22 3-5 5" />
+      <path d="m17 3 5 5" />
+    </svg>
+  )
+}
+
+export function X(p: IconProps = {}) {
+  return (
+    <svg {...base(p.size, p.strokeWidth, p.style)}>
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
     </svg>
   )
 }

@@ -1,3 +1,11 @@
+function plural(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return one
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few
+  return many
+}
+
 export const t = {
   app: {
     title: 'DESIGN Library',
@@ -18,7 +26,8 @@ export const t = {
     clearCache: 'Очистить кеш',
     ignore: 'Игнорировать',
     restore: 'Вернуть',
-    exportMd: 'Экспорт в Markdown',
+    exportMd: 'Скопировать отчёт в Markdown',
+    report: 'Отчёт',
     cancel: 'Отмена',
     copy: 'Скопировано',
   },
@@ -26,6 +35,12 @@ export const t = {
     error: 'Ошибки',
     warning: 'Предупреждения',
     info: 'Советы',
+    /** Правильная форма с учётом числа: «1 ошибка», «2 ошибки», «5 ошибок». */
+    label: {
+      error: (n: number) => plural(n, 'ошибка', 'ошибки', 'ошибок'),
+      warning: (n: number) => plural(n, 'предупреждение', 'предупреждения', 'предупреждений'),
+      info: (n: number) => plural(n, 'совет', 'совета', 'советов'),
+    },
   },
   section: {
     what: 'Что',
@@ -70,6 +85,35 @@ export const t = {
     noIssuesAi: 'AI не нашёл нарушений.',
     jump: 'Перейти к слою',
     allRules: 'Все правила',
+    scoreOutOf: '/ 100',
+    total: (n: number) => `${n} ${plural(n, 'проблема', 'проблемы', 'проблем')}`,
+    rulesCount: (n: number) => `${n} ${plural(n, 'правило', 'правила', 'правил')}`,
+    filteredOf: (shown: number, total: number) => `Показано ${shown} из ${total}`,
+    notStarted: 'Не запущен',
+    runHint: 'Нажмите «Запустить аудит» ниже',
+    empty: {
+      notStartedTitle: 'Запустите аудит макета',
+      notStartedDesc: 'Автоаудит проверит макет по 227 правилам лучших практик и даст рекомендации по исправлению.',
+      aiNotStartedTitle: 'Запустите AI-аудит',
+      aiNotStartedDesc: 'AI-аудит проверит макет по UI/UX-правилам лучших практик и даст рекомендации по улучшению.',
+      noSelectionTitle: 'Выделите фрейм',
+      noSelectionDesc: 'Кликните по любому фрейму на холсте, чтобы начать аудит.',
+      noIssuesTitle: 'Отличный макет',
+      noIssuesDesc: 'Нарушений не найдено.',
+      noIssuesAiTitle: 'AI ничего не нашёл',
+      noIssuesAiDesc: 'Claude не заметил проблем на выделенном фрейме.',
+      filteredTitle: 'Под фильтры ничего нет',
+      filteredDesc: 'Измените или сбросьте фильтры, чтобы увидеть проблемы.',
+      resetFilters: 'Сбросить фильтры',
+    },
+    verdicts: {
+      critical: 'Критично',
+      bad: 'Плохо',
+      avg: 'Средне',
+      good: 'Хорошо',
+      excellent: 'Отлично',
+    },
+    resetFilter: 'Сбросить фильтр',
   },
   errors: {
     apiKeyMissing: 'Введите API-ключ в «Настройках».',

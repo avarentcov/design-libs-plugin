@@ -14,6 +14,19 @@ export function computeScore(issues: Array<{ severity: Severity }>): number {
   return Math.max(1, Math.round(100 / (1 + penalty / 50)))
 }
 
+export type VerdictTone = 'destructive' | 'warning' | 'primary' | 'success'
+export interface Verdict { key: 'critical' | 'bad' | 'avg' | 'good' | 'excellent'; tone: VerdictTone }
+
+/** Маппинг score → вердикт. Границы выбраны под асимптотическую формулу:
+ *  <=20 критично, 21–40 плохо, 41–60 средне, 61–85 хорошо, 86–100 отлично. */
+export function scoreVerdict(score: number): Verdict {
+  if (score <= 20) return { key: 'critical', tone: 'destructive' }
+  if (score <= 40) return { key: 'bad', tone: 'destructive' }
+  if (score <= 60) return { key: 'avg', tone: 'warning' }
+  if (score <= 85) return { key: 'good', tone: 'primary' }
+  return { key: 'excellent', tone: 'success' }
+}
+
 function severityHeading(sev: Severity): string {
   return sev === 'error' ? 'Ошибки' : sev === 'warning' ? 'Предупреждения' : 'Советы'
 }

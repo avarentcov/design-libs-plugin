@@ -217,6 +217,9 @@ export function serializeTree(root: SceneNode, parentId: string | null = null): 
   ]
   while (queue.length && out.length < MAX_NODES) {
     const { node, parent, depth } = queue.shift()!
+    // Скрытые слои (и всё поддерево под ними) пропускаем — они не влияют
+    // на итоговый рендер и не должны попадать в аудит.
+    if (node.visible === false) continue
     out.push(serializeOne(node, parent))
     if (depth < MAX_DEPTH && 'children' in node) {
       for (const child of node.children) {

@@ -59,9 +59,12 @@ async function buildHtml() {
   const js = await readFile(resolve(DIST, 'ui.js'), 'utf8')
   let css = ''
   try { css = await readFile(resolve(DIST, 'ui.css'), 'utf8') } catch {}
+  // Callback-форма replace: строковая форма трактует `$&`/`$1` в js/css как
+  // ссылки на match, что мусорит внутрь bundled React-кода. Функция отключает
+  // эту подстановку.
   const html = tpl
-    .replace('<!--INLINE_STYLE-->', `<style>${css}</style>`)
-    .replace('<!--INLINE_SCRIPT-->', `<script>${js}</script>`)
+    .replace('<!--INLINE_STYLE-->', () => `<style>${css}</style>`)
+    .replace('<!--INLINE_SCRIPT-->', () => `<script>${js}</script>`)
   await writeFile(resolve(DIST, 'ui.html'), html, 'utf8')
 }
 

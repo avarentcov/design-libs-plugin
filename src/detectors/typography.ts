@@ -57,12 +57,14 @@ export const lineHeight: DetectorFn = ({ nodes, rule }) => {
     if (n.type !== 'TEXT' || !n.text || !n.visible) continue
     if (n.text.fontSize < 12 || n.text.fontSize > 20) continue
     if (n.text.lineHeight == null || n.text.fontSize === 0) continue
-    const ratio = n.text.lineHeight / n.text.fontSize
+    const rawRatio = n.text.lineHeight / n.text.fontSize
+    // Округляем до 1 знака — внутренние допуски движка рендера / подгонка дизайнера
+    // часто дают 1.38 вместо 1.4, и такие отклонения не стоят отдельного alert'а.
+    const ratio = Math.round(rawRatio * 10) / 10
 
-    let severity: Severity | null = null
-    if (ratio < softMin || ratio > softMax) severity = 'warning'
-    else if (ratio < bodyMin || ratio > bodyMax) severity = 'info'
-    if (!severity) continue
+    // Только жёсткие нарушения: info-уровень «вне идеала» убран, чтобы не шуметь.
+    if (ratio >= softMin && ratio <= softMax) continue
+    const severity: Severity = 'warning'
 
     out.push(
       buildRecommendation({
@@ -71,17 +73,17 @@ export const lineHeight: DetectorFn = ({ nodes, rule }) => {
         origin: 'auto',
         severity,
         target: { nodeId: n.id, nodeName: n.name, path: resolveNodePath(n.id, byId) },
-        title: severity === 'warning' ? 'Неподходящий междустрочный' : 'Интервал не по шкале',
-        summary: `Line-height ${ratio.toFixed(2)} ${severity === 'warning' ? `вне допустимого ${softMin}–${softMax}` : `вне идеала ${bodyMin}–${bodyMax}`}.`,
+        title: 'Неподходящий междустрочный',
+        summary: `Line-height ${ratio.toFixed(1)} вне допустимого ${softMin}–${softMax}.`,
         fix: {
           steps: [
             `Приведите line-height к ${bodyMin}–${bodyMax} × fontSize.`,
             `Для ${n.text.fontSize} px это ${Math.round(n.text.fontSize * 1.55)} px.`,
           ],
           expected: `${bodyMin}–${bodyMax}`,
-          actual: ratio.toFixed(2),
+          actual: ratio.toFixed(1),
         },
-        measurements: { ratio: Number(ratio.toFixed(2)) },
+        measurements: { ratio },
       }),
     )
   }
