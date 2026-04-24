@@ -122,22 +122,24 @@ export const targetSpacing: DetectorFn = ({ nodes, rule }) => {
       const key = `${a.id}|${b.id}`
       if (seenPairs.has(key)) continue
       seenPairs.add(key)
+      const aSize = `${Math.round(a.width)}×${Math.round(a.height)}`
+      const bSize = `${Math.round(b.width)}×${Math.round(b.height)}`
       out.push(
         buildRecommendation({
           rule,
           detectorId: 'target-spacing',
           origin: 'auto',
           severity,
-          target: { nodeId: a.id, nodeName: a.name, path: resolveNodePath(a.id, byId) },
+          target: { nodeId: a.id, nodeName: a.name, path: resolveNodePath(a.id, byId), hint: `зазор ${Math.round(d)} px` },
           title: severity === 'warning' ? 'Мелкие таргеты близко' : 'Таргеты тесно стоят',
-          summary: `«${a.name}» и «${b.name}» в ${Math.round(d)} px друг от друга.`,
+          summary: `«${a.name}» (${aSize}) и «${b.name}» (${bSize}) с зазором ${Math.round(d)} px.`,
           fix: {
             steps: [
-              `Добавьте минимум ${severity === 'warning' ? clearance : strictClearance} px.`,
+              `Добавьте минимум ${severity === 'warning' ? clearance : strictClearance} px зазора.`,
               'Или укрупните оба элемента до ≥44 px.',
             ],
-            expected: `≥ ${severity === 'warning' ? clearance : strictClearance} px`,
-            actual: `${Math.round(d)} px`,
+            expected: `зазор ≥ ${severity === 'warning' ? clearance : strictClearance} px`,
+            actual: `зазор ${Math.round(d)} px`,
           },
           measurements: { distance: Math.round(d), clearance, strictClearance },
         }),

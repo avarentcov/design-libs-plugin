@@ -7,6 +7,7 @@ import { runAutoAudit } from '../detectors'
 import { buildRecommendation, type Recommendation } from '../shared/recommendation'
 import { BUNDLED_AT, BUNDLED_RULES } from '../shared/rules-bundle'
 import { applyAiOverrides } from '../shared/ai-rule-overrides'
+import { DEFAULT_THRESHOLDS, applyThresholds } from '../shared/thresholds'
 import { DEFAULT_MODEL, type ClaudeModel, runVisionAuditBatched } from '../vision/claude'
 import {
   STORAGE_KEYS,
@@ -34,6 +35,7 @@ const DEFAULT_SETTINGS: SettingsValue = {
   platform: 'web',
   darkTheme: false,
   apiUrl: DEFAULT_RULES_URL,
+  thresholds: DEFAULT_THRESHOLDS,
 }
 
 interface CachedRules {
@@ -130,7 +132,14 @@ export function App() {
     ;(async () => {
       const savedSettings = await readJson<Partial<SettingsValue>>(getClientStorage, STORAGE_KEYS.settings, DEFAULT_SETTINGS)
       const savedKey = (await getClientStorage(STORAGE_KEYS.apiKey)) ?? ''
-      const effective: SettingsValue = { ...DEFAULT_SETTINGS, ...savedSettings, apiKey: savedKey }
+      const effective: SettingsValue = {
+        ...DEFAULT_SETTINGS,
+        ...savedSettings,
+        apiKey: savedKey,
+        // Мердж порогов: если пользователь сохранил старые настройки без `thresholds`,
+        // или без какого-то поля — докладываем дефолты.
+        thresholds: { ...DEFAULT_THRESHOLDS, ...(savedSettings?.thresholds ?? {}) },
+      }
       setSettings(effective)
 
       // 1. Если в clientStorage свежий кеш новее bundle'а — подставляем его.
@@ -155,12 +164,14 @@ export function App() {
     if (!canRun) return
     setIsRunning(true)
     try {
+      // Применяем пользовательские пороги к правилам перед прогоном.
+      const tuned = applyThresholds(rules, settings.thresholds)
       const recs = runAutoAudit(
         {
           nodes: selection,
           settings: { platform: settings.platform as Platform, darkTheme: settings.darkTheme },
         },
-        rules,
+        tuned,
       )
       setIssues((prev) => [...prev.filter((p) => p.origin === 'ai'), ...recs])
       setAutoRan(true)

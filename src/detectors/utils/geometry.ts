@@ -20,10 +20,20 @@ export function resolveNodePath(nodeId: string, byId: Map<string, SerializedNode
   return parts.join(' › ')
 }
 
+/**
+ * Считаем слой кликабельным если его имя явно обозначает интерактивный
+ * элемент. `icon` сам по себе НЕ кликабелен (большинство иконок декоративные:
+ * статусы, валидация, подсказки), но `icon-button` / `iconButton` — да.
+ */
 export function isTappable(node: SerializedNode): boolean {
   if (!node.visible || node.opacity < 0.1) return false
-  if (/^(btn|button|cta|tap|link|icon-button)/i.test(node.name)) return true
-  if (node.type === 'INSTANCE' && /button|btn|tab|chip|icon/i.test(node.name)) return true
+  const name = node.name
+  // Префиксы кликабельных элементов
+  if (/^(btn|button|cta|tap|link|iconbutton|icon-button|icon_button|iconBtn)/i.test(name)) return true
+  // Явные признаки интеракции где угодно в имени
+  if (/\b(button|btn|iconbutton|chip|tab)\b|[/_-](button|btn|iconbutton|chip|tab)(?:[/_-]|$)/i.test(name)) return true
+  // Компонент-инстанс с интерактивным именем (без слова "icon" одиноко)
+  if (node.type === 'INSTANCE' && /(button|btn|tab|chip|link)/i.test(name) && !/^icon[/_-]/i.test(name)) return true
   return false
 }
 
