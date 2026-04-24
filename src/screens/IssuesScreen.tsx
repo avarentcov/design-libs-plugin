@@ -283,7 +283,17 @@ export function IssuesScreen(props: IssuesScreenProps) {
             <div className="mt-3 pt-3 border-t border-dashed border-border flex flex-col gap-1.5">
               {recs.map((r) => (
                 <div key={r.id} className="flex items-center gap-2 text-[11px] px-2 py-1.5 rounded-md bg-background border border-border">
-                  <span className="flex-1 min-w-0 truncate">«{r.target.nodeName}»</span>
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
+                    <span className="truncate">«{r.target.nodeName}»</span>
+                    {r.fix.actual ? (
+                      <code className="shrink-0 font-mono text-[10px] px-1 py-px rounded bg-muted text-muted-foreground">
+                        {r.fix.actual}
+                      </code>
+                    ) : null}
+                    {r.target.hint ? (
+                      <span className="truncate text-muted-foreground">· {r.target.hint}</span>
+                    ) : null}
+                  </div>
                   <Button
                     size="icon"
                     variant="outline"
@@ -353,10 +363,13 @@ export function IssuesScreen(props: IssuesScreenProps) {
     warning: 'warning',
     info: 'primary',
   }
+  // Активные чипсы: тональная заливка severity + затемнённый текст для
+  // контраста ≥ WCAG AA. Для warning базовый --warning=50% яркости слишком
+  // светлый на светлом фоне, поэтому используем 30-35% через arbitrary HSL.
   const activeChipClass: Record<'destructive' | 'warning' | 'primary', string> = {
-    destructive: 'bg-destructive text-destructive-foreground border-destructive',
-    warning: 'bg-warning text-warning-foreground border-warning',
-    primary: 'bg-primary text-primary-foreground border-primary',
+    destructive: 'bg-destructive/15 text-[hsl(0_84%_45%)] border-destructive/40',
+    warning: 'bg-warning/20 text-[hsl(38_92%_32%)] border-warning/50',
+    primary: 'bg-primary/10 text-primary border-primary/40',
   }
 
   const resetAllFilters = () => { setFilter('all'); setRuleFilter('all') }
