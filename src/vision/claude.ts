@@ -33,8 +33,17 @@ export interface AiIssue {
   severity: Severity
   title: string
   summary: string
+  nodeId?: string
   nodeHint?: string
   fix: AiIssueFix
+}
+
+/** Компактная запись слоя для каталога, который отдаём модели. */
+export interface AiNodeRef {
+  id: string
+  name: string
+  type: string
+  text?: string
 }
 
 export interface AiAuditResult {
@@ -49,10 +58,22 @@ export interface RunVisionAuditParams {
   model?: ClaudeModel
   pngBase64: string
   rules: FigmaRule[]
+  /**
+   * Компактный каталог слоёв выделенного фрейма: плоский список с id/именами/типами
+   * и фрагментами текста. Модель обязана вернуть `nodeId` из этого каталога — это
+   * единственный способ точно подсветить слой, к которому относится замечание.
+   * Если каталог не передан, модель вернёт только `nodeHint`.
+   */
+  nodes?: AiNodeRef[]
+  /** id корневого слоя (обычно сам выделенный фрейм) — модель не должна ссылаться на него. */
+  rootNodeId?: string
   signal?: AbortSignal
 }
 
-function buildPrompt(rules: FigmaRule[]): string {
+/** Максимум нод в каталоге, который уходит модели. Выше — токен-бюджет. */
+const MAX_NODES_IN_PROMPT = 200
+
+function buildPrompt(rules: FigmaRule[], nodes: AiNodeRef[], rootNodeId?: string): string {
   const compact = rules.slice(0, MAX_RULES_IN_PROMPT).map((r) => ({
     id: r.id,
     name: r.nameRu,
@@ -60,6 +81,14 @@ function buildPrompt(rules: FigmaRule[]): string {
     summary: r.summary,
     antiPattern: r.antiPattern,
   }))
+  const nodeCatalog = nodes.slice(0, MAX_NODES_IN_PROMPT).map((n) => {
+    const o: { id: string; name: string; type: string; text?: string } = {
+      id: n.id, name: n.name, type: n.type,
+    }
+    if (n.text) o.text = n.text
+    return o
+  })
+  const hasCatalog = nodeCatalog.length > 0
   return [
     'Ты — экспертный UX/UI-аудитор мирового уровня. Выступаешь в роли внешнего консультанта для продуктовой команды.',
     '',
@@ -73,7 +102,10 @@ function buildPrompt(rules: FigmaRule[]): string {
     '- `ruleId` — строго из списка ниже.',
     '- `title` — 3–6 слов, суть нарушения на русском.',
     '- `summary` — одно предложение с конкретикой: что именно не так и почему это проблема.',
-    '- `nodeHint` — имя слоя/группы в «ёлочках», которого касается замечание. Бери буквальное название из контекста (надпись на кнопке, текст заголовка, «карточка X», «иконка Y»). Без имени плагин не сможет подсветить слой.',
+    hasCatalog
+      ? '- `nodeId` — **обязательно**. Строго одно из значений поля `id` из каталога `nodes` ниже. Выбирай самый узкий подходящий слой (кнопку, текст, иконку), а не корневой фрейм. Если подходящего слоя в каталоге нет — не выдавай это замечание.'
+      : '- `nodeId` — если знаешь id конкретного слоя, укажи; иначе опусти.',
+    '- `nodeHint` — резервная текстовая подсказка (имя слоя или видимый текст) на случай, если nodeId не получится использовать.',
     '- `fix.steps` — 1–3 шага, глагол в повелительном наклонении.',
     '- Не дублируй summary правила.',
     '- Пиши по-русски. «Ёлочки» и тире —.',
@@ -82,6 +114,17 @@ function buildPrompt(rules: FigmaRule[]): string {
     '```json',
     JSON.stringify(compact, null, 2),
     '```',
+    ...(hasCatalog
+      ? [
+          '',
+          rootNodeId
+            ? `Каталог слоёв внутри выделенного фрейма (корневой слой "${rootNodeId}" не используй — выбирай дочерние):`
+            : 'Каталог слоёв внутри выделенного фрейма:',
+          '```json',
+          JSON.stringify(nodeCatalog, null, 2),
+          '```',
+        ]
+      : []),
   ].join('\n')
 }
 
@@ -102,7 +145,7 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 interface AnthropicContentBlock {
   type: string
   name?: string
-  input?: { issues?: Array<Partial<AiIssue> & { fix?: Partial<AiIssueFix> }>; summary?: string }
+  input?: { issues?: Array<Partial<AiIssue> & { nodeId?: string; fix?: Partial<AiIssueFix> }>; summary?: string }
   text?: string
 }
 
@@ -128,7 +171,7 @@ async function callApi(body: object, apiKey: string, signal?: AbortSignal): Prom
 }
 
 export async function runVisionAudit(params: RunVisionAuditParams): Promise<AiAuditResult> {
-  const { apiKey, pngBase64, rules, signal } = params
+  const { apiKey, pngBase64, rules, signal, nodes = [], rootNodeId } = params
   const model = params.model ?? DEFAULT_MODEL
 
   if (!apiKey) throw new Error('Не задан API-ключ Anthropic.')
@@ -145,7 +188,8 @@ export async function runVisionAudit(params: RunVisionAuditParams): Promise<AiAu
     throw new Error('Скриншот больше 1 МБ. Уменьшите масштаб экспорта до 1 и попробуйте снова.')
   }
 
-  const prompt = buildPrompt(rules)
+  const prompt = buildPrompt(rules, nodes, rootNodeId)
+  const knownNodeIds = new Set(nodes.map((n) => n.id))
   // Extended thinking пытаемся включить для всех моделей Claude 4.x.
   // Если API скажет, что модель не поддерживает, сработает фолбэк ниже.
   const buildBody = (withThinking: boolean): Record<string, unknown> => {
@@ -225,6 +269,15 @@ export async function runVisionAudit(params: RunVisionAuditParams): Promise<AiAu
         ? raw.fix!.steps.map((s) => String(s).trim()).filter(Boolean)
         : []
       if (steps.length === 0) continue
+      // nodeId принимаем только если он есть в каталоге, который мы отдали
+      // модели. Иначе отбрасываем — фолбэк сработает по nodeHint в UI.
+      let nodeId: string | undefined
+      if (raw.nodeId && typeof raw.nodeId === 'string') {
+        const candidate = raw.nodeId.trim()
+        if (candidate && candidate !== rootNodeId && (knownNodeIds.size === 0 || knownNodeIds.has(candidate))) {
+          nodeId = candidate
+        }
+      }
       issues.push({
         ruleId: raw.ruleId,
         severity: (['error', 'warning', 'info'] as Severity[]).includes(raw.severity as Severity)
@@ -232,6 +285,7 @@ export async function runVisionAudit(params: RunVisionAuditParams): Promise<AiAu
           : 'info',
         title,
         summary,
+        nodeId,
         nodeHint: raw.nodeHint ? String(raw.nodeHint) : undefined,
         fix: { steps, expected: raw.fix?.expected ? String(raw.fix.expected) : undefined },
       })

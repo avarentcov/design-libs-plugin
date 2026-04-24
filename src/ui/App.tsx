@@ -209,11 +209,28 @@ export function App() {
       const aiRules = rules.filter((r) => r.checkType === 'ai')
       const model = (settings.model as ClaudeModel) || DEFAULT_MODEL
       const modelLabel = model.replace('claude-', '').replace(/-/g, ' ')
+      // Каталог слоёв для модели: тот же selection[], что и у автоаудита, только
+      // компактно (id/name/type/text). Корневой фрейм исключаем — просили
+      // модель не ссылаться на него.
+      const nodesCatalog = selection
+        .filter((n) => n.id !== firstId && n.name)
+        .map((n) => {
+          const entry: { id: string; name: string; type: string; text?: string } = {
+            id: n.id,
+            name: n.name,
+            type: n.type,
+          }
+          const chars = n.text?.characters?.trim()
+          if (chars) entry.text = chars.length > 80 ? `${chars.slice(0, 80)}…` : chars
+          return entry
+        })
       const res = await runVisionAuditBatched({
         apiKey: settings.apiKey,
         model,
         pngBase64: png,
         rules: aiRules,
+        nodes: nodesCatalog,
+        rootNodeId: firstId,
         onProgress: (done, total) => {
           if (total > 1) notify(`${modelLabel} · батч ${done}/${total}`)
         },
@@ -278,19 +295,29 @@ export function App() {
         return (best && best.score >= 30) ? best.node : null
       }
 
+      const nodesById = new Map(selection.map((n) => [n.id, n]))
       const aiRecs: Recommendation[] = []
       for (const ai of res.issues) {
         const rule = rulesById.get(ai.ruleId)
         if (!rule) continue
-        const matched = findNodeByHint(ai.nodeHint)
-        const target = matched ?? firstNode
+        // Приоритет: явный nodeId от модели (если он есть в selection и не
+        // корневой) → фаззи-поиск по nodeHint → без таргета. Фолбэк на
+        // firstNode убран — он давал скролл на весь фрейм и «очень большую
+        // область выделения».
+        let target: SerializedNode | null | undefined = null
+        if (ai.nodeId && ai.nodeId !== firstId) {
+          target = nodesById.get(ai.nodeId) ?? null
+        }
+        if (!target) target = findNodeByHint(ai.nodeHint)
         aiRecs.push(
           buildRecommendation({
             rule,
             origin: 'ai',
             severity: ai.severity,
             target: {
-              nodeId: target?.id ?? firstId,
+              // Пустая строка = нет таргета → кнопка «перейти» в UI будет
+              // disabled. Лучше, чем скроллить к корневому фрейму.
+              nodeId: target?.id ?? '',
               nodeName: target?.name ?? 'layer',
               hint: ai.nodeHint,
             },

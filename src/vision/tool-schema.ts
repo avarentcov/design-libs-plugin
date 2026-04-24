@@ -20,7 +20,15 @@ export const REPORT_ISSUES_TOOL = {
             severity: { type: 'string', enum: ['error', 'warning', 'info'] },
             title: { type: 'string', description: 'Короткий заголовок 3–6 слов.' },
             summary: { type: 'string', description: 'Одно предложение: что не так.' },
-            nodeHint: { type: 'string', description: 'Подсказка о расположении элемента на макете.' },
+            nodeId: {
+              type: 'string',
+              description:
+                'id конкретного слоя из переданного каталога nodes, к которому относится замечание. Выбирай самый узкий подходящий слой (не корневой фрейм). Обязательно.',
+            },
+            nodeHint: {
+              type: 'string',
+              description: 'Резервная текстовая подсказка (имя слоя или видимый текст) на случай, если nodeId не удастся использовать.',
+            },
             fix: {
               type: 'object',
               description: 'Как исправить — конкретно и коротко.',

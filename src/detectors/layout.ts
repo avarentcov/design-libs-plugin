@@ -71,6 +71,8 @@ export const strokeConsistency: DetectorFn = ({ nodes, rule }) => {
   const nodesByWeight = new Map<number, typeof nodes>()
   for (const n of nodes) {
     if (!(n.strokeWeight > 0)) continue
+    if (!n.strokes.length) continue
+    if (!n.strokes.some((s) => s.visible)) continue
     const w = Math.round(n.strokeWeight * 10) / 10
     counts.set(w, (counts.get(w) ?? 0) + 1)
     const list = nodesByWeight.get(w) ?? []
