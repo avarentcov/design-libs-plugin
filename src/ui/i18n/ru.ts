@@ -65,7 +65,7 @@ export const t = {
     darkTheme: 'Тёмная тема',
     rulesCached: 'Правил в кеше',
     savedAt: 'Кеш от',
-    priceNote: 'Стоимость прогона: Haiku ≈ $0.007, Sonnet ≈ $0.02, Opus ≈ $0.033.',
+    priceNote: 'AI-аудит проверяет 97 правил в 3 батча. Стоимость прогона: Haiku ≈ $0.03, Sonnet ≈ $0.10, Opus 4.5 ≈ $0.80, Opus 4.7 с deep-thinking ≈ $1.2.',
   },
   summary: {
     score: 'Общая оценка',
@@ -93,9 +93,9 @@ export const t = {
     runHint: 'Нажмите «Запустить аудит» ниже',
     empty: {
       notStartedTitle: 'Запустите аудит макета',
-      notStartedDesc: 'Автоаудит проверит макет по 227 правилам лучших практик и даст рекомендации по исправлению.',
+      notStartedDesc: 'Автоматическая проверка макета по правилам лучших UI/UX практик.',
       aiNotStartedTitle: 'Запустите AI-аудит',
-      aiNotStartedDesc: 'AI-аудит проверит макет по UI/UX-правилам лучших практик и даст рекомендации по улучшению.',
+      aiNotStartedDesc: 'Экспертная проверка макета по правилам UI/UX с рекомендациями.',
       noSelectionTitle: 'Выделите фрейм',
       noSelectionDesc: 'Кликните по любому фрейму на холсте, чтобы начать аудит.',
       noIssuesTitle: 'Отличный макет',

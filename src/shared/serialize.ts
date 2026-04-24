@@ -210,6 +210,17 @@ function serializeOne(node: SceneNode, parentId: string | null): SerializedNode 
   }
 }
 
+/** Невидимый для рендера: явно скрыт, полностью прозрачен или нулевой размер. */
+function isEffectivelyHidden(node: SceneNode): boolean {
+  if (node.visible === false) return true
+  const opacity = (node as unknown as { opacity?: number }).opacity
+  if (typeof opacity === 'number' && opacity === 0) return true
+  const w = 'width' in node ? (node.width as number) : 0
+  const h = 'height' in node ? (node.height as number) : 0
+  if (w === 0 || h === 0) return true
+  return false
+}
+
 export function serializeTree(root: SceneNode, parentId: string | null = null): SerializedNode[] {
   const out: SerializedNode[] = []
   const queue: Array<{ node: SceneNode; parent: string | null; depth: number }> = [
@@ -217,9 +228,9 @@ export function serializeTree(root: SceneNode, parentId: string | null = null): 
   ]
   while (queue.length && out.length < MAX_NODES) {
     const { node, parent, depth } = queue.shift()!
-    // Скрытые слои (и всё поддерево под ними) пропускаем — они не влияют
-    // на итоговый рендер и не должны попадать в аудит.
-    if (node.visible === false) continue
+    // Скрытые слои (явно, прозрачные, нулевого размера) и всё поддерево под ними
+    // пропускаем — они не влияют на рендер и не должны попадать в аудит.
+    if (isEffectivelyHidden(node)) continue
     out.push(serializeOne(node, parent))
     if (depth < MAX_DEPTH && 'children' in node) {
       for (const child of node.children) {

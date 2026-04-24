@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Recommendation } from '../shared/recommendation'
 import type { FigmaRule, Severity } from '../shared/rules-types'
 import { t } from '../ui/i18n/ru'
-import { AlertCircle, AlertTriangle, ArrowRight, CheckCircle2, Copy, Download, ExternalLink, FilterX, Info, Key, MousePointer, Play, Sparkles, X } from '../ui/icons'
+import { AlertCircle, AlertTriangle, ArrowRight, CheckCircle2, Copy, Download, ExternalLink, FilterX, Info, Key, MousePointer, SearchCheck, Sparkles, X } from '../ui/icons'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { Select } from '../components/ui/select'
@@ -18,6 +18,8 @@ export interface IssuesScreenProps {
   rules: FigmaRule[]
   isRunning: boolean
   canRun: boolean
+  /** true, если аудит уже был запущен хотя бы раз (отличает «не начато» от «всё чисто»). */
+  hasRun: boolean
   onRun: () => void
   onJump: (nodeId: string) => void
   onSummaryExport: () => void
@@ -175,18 +177,32 @@ export function IssuesScreen(props: IssuesScreenProps) {
 
   const rulesById = useMemo(() => new Map(props.rules.map((r) => [r.id, r])), [props.rules])
 
+  // Дедуп: на одну ноду может случайно прийти несколько issue'ов одного правила
+  // (разные детекторы/проходы с чуть разным summary). Оставляем первый.
+  const dedupedIssues = useMemo(() => {
+    const seen = new Set<string>()
+    const out: Recommendation[] = []
+    for (const i of props.issues) {
+      const key = `${i.ruleId}::${i.target.nodeId}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(i)
+    }
+    return out
+  }, [props.issues])
+
   const visible = useMemo(() => {
-    let arr = props.issues
+    let arr = dedupedIssues
     if (filter !== 'all') arr = arr.filter((i) => i.severity === filter)
     if (ruleFilter !== 'all') arr = arr.filter((i) => i.ruleId === ruleFilter)
     return arr
-  }, [props.issues, filter, ruleFilter])
+  }, [dedupedIssues, filter, ruleFilter])
 
   const availableRuleIds = useMemo(() => {
     const seen = new Set<string>()
-    for (const i of props.issues) seen.add(i.ruleId)
+    for (const i of dedupedIssues) seen.add(i.ruleId)
     return Array.from(seen)
-  }, [props.issues])
+  }, [dedupedIssues])
 
   const grouped = useMemo(() => {
     const by: Record<Severity, Recommendation[]> = { error: [], warning: [], info: [] }
@@ -197,60 +213,125 @@ export function IssuesScreen(props: IssuesScreenProps) {
 
   const counts = useMemo(() => {
     const c = { error: 0, warning: 0, info: 0 }
-    for (const i of props.issues) c[i.severity] += 1
+    for (const i of dedupedIssues) c[i.severity] += 1
     return c
-  }, [props.issues])
+  }, [dedupedIssues])
 
   const isEmpty = visible.length === 0
   const showNoApiKey = props.mode === 'ai' && props.hasApiKey === false
 
-  const PrimaryIcon = props.mode === 'ai' ? Sparkles : Play
+  const PrimaryIcon = props.mode === 'ai' ? Sparkles : SearchCheck
   const primaryAction = props.mode === 'ai' ? t.actions.runAi : t.actions.runAudit
 
-  const renderCard = (rec: Recommendation) => {
-    const isOpen = expandedId === rec.id
+  /**
+   * Группа одного правила — одна карточка. Если в группе один issue, работает
+   * как обычная карточка. Если несколько — показывает счётчик, раскрывается
+   * в список слоёв с индивидуальными кнопками «Перейти».
+   */
+  const renderRuleGroup = (recs: Recommendation[]) => {
+    const head = recs[0]
+    const key = `${head.ruleId}:${head.severity}`
+    const isOpen = expandedId === key
+    const multi = recs.length > 1
     return (
       <div
-        key={rec.id}
-        onClick={() => setExpandedId(isOpen ? null : rec.id)}
+        key={key}
+        onClick={() => setExpandedId(isOpen ? null : key)}
         className={cn(
           'rounded-lg border p-3 mb-1.5 cursor-pointer transition-colors',
           isOpen ? 'bg-accent' : 'bg-card hover:bg-accent/50',
         )}
       >
         <div className="flex items-start gap-2">
-          <div className={cn('pt-0.5', SEVERITY_COLOR[rec.severity])}>
-            <SeverityIcon s={rec.severity} size={14} />
+          <div className={cn('pt-0.5', SEVERITY_COLOR[head.severity])}>
+            <SeverityIcon s={head.severity} size={14} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5">
-              <span className="font-semibold text-xs flex-1 min-w-0 truncate">{rec.title}</span>
-              <Badge variant="secondary" className="text-[9px] px-1.5 py-0">P{rec.priority}</Badge>
+              <span className="font-semibold text-xs flex-1 min-w-0 truncate">{head.title}</span>
+              {multi ? (
+                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 tabular-nums">× {recs.length}</Badge>
+              ) : null}
+              <Badge variant="secondary" className="text-[9px] px-1.5 py-0">P{head.priority}</Badge>
             </div>
             <div className={cn('text-xs leading-snug mb-1', isOpen ? 'text-foreground' : 'text-muted-foreground')}>
-              {rec.summary}
+              {head.summary}
             </div>
-            <div className="text-[11px] text-muted-foreground truncate">«{rec.target.nodeName}»</div>
+            {!multi ? (
+              <div className="text-[11px] text-muted-foreground truncate">«{head.target.nodeName}»</div>
+            ) : (
+              <div className="text-[11px] text-muted-foreground truncate">
+                {recs.slice(0, 3).map((r) => `«${r.target.nodeName}»`).join(', ')}
+                {recs.length > 3 ? ` и ещё ${recs.length - 3}` : ''}
+              </div>
+            )}
           </div>
-          <Button
-            size="icon"
-            variant="outline"
-            title={t.audit.jump}
-            disabled={!rec.target.nodeId}
-            onClick={(e) => { e.stopPropagation(); props.onJump(rec.target.nodeId) }}
-          >
-            <ArrowRight size={13} />
-          </Button>
+          {!multi ? (
+            <Button
+              size="icon"
+              variant="outline"
+              title={t.audit.jump}
+              disabled={!head.target.nodeId}
+              onClick={(e) => { e.stopPropagation(); props.onJump(head.target.nodeId) }}
+            >
+              <ArrowRight size={13} />
+            </Button>
+          ) : null}
         </div>
         {isOpen ? (
-          <ExpandedCard rec={rec} onJump={props.onJump} onCopyFix={props.onCopyFix} />
+          multi ? (
+            <div className="mt-3 pt-3 border-t border-dashed border-border flex flex-col gap-1.5">
+              {recs.map((r) => (
+                <div key={r.id} className="flex items-center gap-2 text-[11px] px-2 py-1.5 rounded-md bg-background border border-border">
+                  <span className="flex-1 min-w-0 truncate">«{r.target.nodeName}»</span>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    title={t.audit.jump}
+                    disabled={!r.target.nodeId}
+                    onClick={(e) => { e.stopPropagation(); props.onJump(r.target.nodeId) }}
+                  >
+                    <ArrowRight size={13} />
+                  </Button>
+                </div>
+              ))}
+              <div className="flex gap-1.5 flex-wrap pt-1">
+                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); props.onCopyFix(head) }}>
+                  <Copy size={12} /> {t.section.copyFix}
+                </Button>
+                {head.docUrl ? (
+                  <Button size="sm" variant="outline" asChild>
+                    <a href={head.docUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                      {t.section.docs} <ExternalLink size={12} />
+                    </a>
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <ExpandedCard rec={head} onJump={props.onJump} onCopyFix={props.onCopyFix} />
+          )
         ) : null}
       </div>
     )
   }
 
-  const total = props.issues.length
-  const notStarted = total === 0 && !props.isRunning
+  /** Сворачиваем список issue'ов одной severity в группы по ruleId, сохраняя порядок. */
+  const groupByRule = (recs: Recommendation[]): Recommendation[][] => {
+    const map = new Map<string, Recommendation[]>()
+    for (const r of recs) {
+      const k = r.ruleId
+      if (!map.has(k)) map.set(k, [])
+      map.get(k)!.push(r)
+    }
+    return Array.from(map.values())
+  }
+
+  const total = dedupedIssues.length
+  // «Не запущено» — когда аудит ещё ни разу не прогоняли.
+  // «Всё чисто» — когда прогоняли, но проблем нет.
+  const notStarted = !props.hasRun && total === 0 && !props.isRunning
+  const allClean = props.hasRun && total === 0 && !props.isRunning
   const verdict = scoreVerdict(props.score)
   const uniqueRules = availableRuleIds.length
   const shownCount = visible.length
@@ -279,7 +360,8 @@ export function IssuesScreen(props: IssuesScreenProps) {
   }
 
   const resetAllFilters = () => { setFilter('all'); setRuleFilter('all') }
-  const showHeader = !notStarted && !showNoApiKey
+  // Шапку с оценкой прячем когда ничего не запущено ИЛИ когда всё чисто (нечего мерять).
+  const showHeader = !notStarted && !showNoApiKey && !allClean
 
   const resolveEmpty = (): React.ReactNode => {
     if (showNoApiKey) {
@@ -310,7 +392,7 @@ export function IssuesScreen(props: IssuesScreenProps) {
     }
     if (notStarted) {
       // выделение есть, но аудит ещё не запущен — CTA-кнопка уже в футере, не дублируем.
-      const PrimaryIcon = props.mode === 'ai' ? Sparkles : Play
+      const PrimaryIcon = props.mode === 'ai' ? Sparkles : SearchCheck
       const title = props.mode === 'ai' ? t.audit.empty.aiNotStartedTitle : t.audit.empty.notStartedTitle
       const desc = props.mode === 'ai' ? t.audit.empty.aiNotStartedDesc : t.audit.empty.notStartedDesc
       return (
@@ -443,7 +525,7 @@ export function IssuesScreen(props: IssuesScreenProps) {
       <div className="flex-1 overflow-auto">
         {props.isRunning ? (
           <EmptyState
-            icon={<span className="animate-pulse">{props.mode === 'ai' ? <Sparkles size={20} /> : <Play size={20} />}</span>}
+            icon={<span className="animate-pulse">{props.mode === 'ai' ? <Sparkles size={20} /> : <SearchCheck size={20} />}</span>}
             tone={props.mode === 'ai' ? 'primary' : 'muted'}
             title={props.mode === 'ai' ? t.audit.aiRunning : t.audit.running}
           />
@@ -460,7 +542,7 @@ export function IssuesScreen(props: IssuesScreenProps) {
                   </span>
                   <span className="text-[11px] text-muted-foreground">· {grouped[s].length}</span>
                 </div>
-                {grouped[s].map(renderCard)}
+                {groupByRule(grouped[s]).map(renderRuleGroup)}
               </div>
             ))}
           </div>

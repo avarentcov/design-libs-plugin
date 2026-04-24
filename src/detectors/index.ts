@@ -33,21 +33,29 @@ export const DETECTORS: Partial<Record<DetectorId, DetectorFn>> = {
   'choice-count': choiceCount,
 }
 
-/** Прогнать все auto-правила по списку нод. */
+/** Прогнать все auto-правила по списку нод.
+ *  В каталоге один детектор (напр. `contrast-wcag`) может быть привязан к
+ *  нескольким правилам — это даёт дубли одной и той же проблемы с разными
+ *  ruleId. Дедупим на уровне запуска: каждый детектор исполняется один раз,
+ *  и его результаты атрибутируются первому найденному правилу. */
 export function runAutoAudit(
   ctxBase: Omit<DetectorContext, 'rule'>,
   rules: Array<DetectorContext['rule']>,
 ): Recommendation[] {
+  const ranDetectors = new Set<string>()
   const all: Recommendation[] = []
   for (const rule of rules) {
     if (rule.checkType !== 'auto' || !rule.detector) continue
-    const fn = DETECTORS[rule.detector.id]
+    const detId = rule.detector.id
+    if (ranDetectors.has(detId)) continue
+    const fn = DETECTORS[detId]
     if (!fn) continue
+    ranDetectors.add(detId)
     try {
       const recs = fn({ ...ctxBase, rule })
       all.push(...recs)
     } catch (err) {
-      console.error(`[detector ${rule.detector.id}] failed:`, err)
+      console.error(`[detector ${detId}] failed:`, err)
     }
   }
   return all

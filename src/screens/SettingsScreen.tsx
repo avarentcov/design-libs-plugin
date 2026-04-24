@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ClaudeModel } from '../vision/claude'
 import type { Platform } from '../detectors/types'
 import { t } from '../ui/i18n/ru'
@@ -36,12 +36,19 @@ const SOURCE_LABEL: Record<'bundle' | 'cache' | 'api', string> = {
 }
 
 const MODELS: Array<{ id: ClaudeModel; label: string }> = [
-  { id: 'claude-haiku-4-5', label: 'Haiku 4.5 — быстро' },
-  { id: 'claude-sonnet-4-5', label: 'Sonnet 4.5 — баланс (рекомендуется)' },
+  { id: 'claude-haiku-4-5', label: 'Haiku 4.5 — быстро и дёшево' },
+  { id: 'claude-sonnet-4-5', label: 'Sonnet 4.5 — баланс' },
   { id: 'claude-opus-4-5', label: 'Opus 4.5 — глубоко' },
+  { id: 'claude-opus-4-7', label: 'Opus 4.7 — deep-thinking (рекомендуется)' },
 ]
 
 const PLATFORMS: Platform[] = ['web', 'ios', 'android']
+
+function maskKey(k: string): string {
+  const trimmed = k.trim()
+  if (trimmed.length < 12) return '••••'
+  return `${trimmed.slice(0, 10)}•••${trimmed.slice(-4)}`
+}
 
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: React.ReactNode }) {
   return (
@@ -55,6 +62,13 @@ function Field({ label, children, hint }: { label: string; children: React.React
 
 export function SettingsScreen(props: SettingsScreenProps) {
   const [draft, setDraft] = useState<SettingsValue>(props.value)
+
+  // Синхронизируем draft с сохранёнными настройками: clientStorage загружается
+  // асинхронно, и если пользователь успел открыть вкладку «Настройки» до
+  // завершения загрузки, поле ключа было бы пустым.
+  useEffect(() => {
+    setDraft(props.value)
+  }, [props.value])
 
   return (
     <div className="p-3 flex flex-col gap-3 overflow-auto">
@@ -80,6 +94,17 @@ export function SettingsScreen(props: SettingsScreenProps) {
           onChange={(e) => setDraft({ ...draft, apiKey: e.target.value })}
           placeholder="sk-ant-…"
         />
+        {draft.apiKey ? (
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-success" />
+            Сохранён: {maskKey(draft.apiKey)} · {draft.apiKey.length} симв.
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
+            Не задан
+          </div>
+        )}
       </Field>
 
       <Field
